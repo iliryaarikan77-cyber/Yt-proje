@@ -376,7 +376,7 @@ scene(24.317,28.0,(r,o)=>{
 },(o,t,lt)=>{
   const s1=p(t,25.25,25.55);draw_on(o.strike.pth,o.strike.len,eo(s1));
   op(o.nope,eo(p(t,25.5,25.7)));op(o.L[2],1-s1*.45);
-  const sw=p(t,27.35,27.6);op(o.h2a,1-sw);op(o.h2b,sw);tf(o.h2b,`scale(${lerp(.9,1,eb(sw))})`);
+  const so=p(t,27.28,27.4),sw=p(t,27.4,27.62);op(o.h2a,1-so);tf(o.h2a,`translateY(${-so*30}px)`);op(o.h2b,sw);tf(o.h2b,`scale(${lerp(.85,1,eb(sw))})`);
   const txt='  backup.enable();',k=Math.floor(p(t,26.68,27.35)*txt.length+.0001);
   const typed=txt.slice(0,k).replace('backup','<span class="c-ok">backup</span>').replace('.enable','.<span class="c-fn">enable</span>');
   const cur=(t>26.6&&t<27.9&&Math.floor(t*4)%2===0)?'<span style="color:#7FE0A8">▍</span>':'';
