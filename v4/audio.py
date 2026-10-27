@@ -204,10 +204,10 @@ def main(src, dst, music=None):
     subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', '2', '-i', '-', tmp],
                    input=np.clip(mix, -1, 1).astype(np.float32).tobytes(), check=True)
     meas = subprocess.run(['ffmpeg', '-hide_banner', '-i', tmp, '-af',
-                           'loudnorm=I=-14:TP=-1.5:LRA=7:print_format=json', '-f', 'null', '-'],
+                           'loudnorm=I=-14:TP=-2.5:LRA=7:print_format=json', '-f', 'null', '-'],
                           capture_output=True, text=True).stderr
     m = json.loads(meas[meas.rindex('{'):meas.rindex('}') + 1])
-    ln = ('loudnorm=I=-14:TP=-1.5:LRA=7:linear=true:'
+    ln = ('loudnorm=I=-14:TP=-2.5:LRA=7:linear=true:'
           f"measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:"
           f"measured_thresh={m['input_thresh']}:offset={m['target_offset']}")
     subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', tmp, '-af', ln + ',aresample=48000',
