@@ -129,7 +129,7 @@ function makeTiles(parent,letters,y,cls){
   return letters.split('').map((L,i)=>{const t=el('div',parent,'tile '+(cls?cls[i]||'':''),`left:${x0+i*(w+gap)}px;top:${y}px`,L);t.dataset.x=x0+i*(w+gap);return t})
 }
 function cellRound(g,s){sv('circle',g,{r:s*.86,fill:'url(#rbc)',stroke:'#A9322A','stroke-width':3});sv('circle',g,{r:s*.38,fill:'#F7A79C',opacity:.75})}
-function cellSickle(g,s){sv('path',g,{d:`M${-s*1.15} ${s*.25} Q0 ${-s*1.75} ${s*1.15} ${s*.25} Q0 ${-s*.45} ${-s*1.15} ${s*.25}Z`,fill:'url(#sick)',stroke:'#8E241E','stroke-width':3,'stroke-linejoin':'round'})}
+function cellSickle(g,s){sv('path',g,{d:`M${-s*1.1} ${s*.35} A ${s*1.1} ${s*1.1} 0 0 1 ${s*1.1} ${s*.35} A ${s*1.55} ${s*1.05} 0 0 0 ${-s*1.1} ${s*.35}Z`,fill:'url(#sick)',stroke:'#8E241E','stroke-width':3,'stroke-linejoin':'round'})}
 function makeScope(parent,cx,cy,r,seed,n,sickleIdx){
   const box=svgBox(parent,cx-r-30,cy-r-30,2*r+60,2*r+60,`${-r-30} ${-r-30} ${2*r+60} ${2*r+60}`);
   const id='clip'+seed;const cp=sv('clipPath',box,{id});sv('circle',cp,{r});
@@ -137,7 +137,8 @@ function makeScope(parent,cx,cy,r,seed,n,sickleIdx){
   sv('circle',inner,{r,fill:'url(#scopebg)'});
   const R=rng(seed),cells=[];
   for(let i=0;i<n;i++){
-    const a=R()*Math.PI*2,d=Math.sqrt(R())*r*.92,x=Math.cos(a)*d,y=Math.sin(a)*d,s=34+R()*14;
+    let a,d,x,y,s,tries=0;do{a=R()*Math.PI*2;d=Math.sqrt(R())*r*.86;x=Math.cos(a)*d;y=Math.sin(a)*d;s=27+R()*9;tries++}
+    while(tries<400&&cells.some(c=>Math.hypot(c.x-x,c.y-y)<(c.s+s)*1.25));
     const g=sv('g',inner,{});const gr=sv('g',g,{});cellRound(gr,s);const gs=sv('g',g,{});cellSickle(gs,s);
     cells.push({g,gr,gs,x,y,s,rot:R()*360,ph:R()*6.28,sick:sickleIdx.includes(i),delay:R()})
   }
@@ -220,11 +221,11 @@ const hook=scene(0,2.817,(r,o)=>{
 scene(2.817,6.55,(r,o)=>{
   o.h1=el('div',r,'ctr serif','top:190px;font-size:128px;color:#E03A2F;line-height:1','sickle cell disease');
   o.h2=el('div',r,'ctr sans','top:330px;font-size:62px','comes from <span style="color:#E03A2F">one wrong letter</span>');
-  o.scope=makeScope(r,540,720,270,11,16,[1,4,7,9,12,14]);
+  o.scope=makeScope(r,540,700,255,11,20,[1,4,7,9,12,14,16,18]);
   o.scopeLbl=el('div',r,'abs hand','left:720px;top:430px;font-size:48px;color:#7A6F62;transform:rotate(8deg)','blood, magnified');
-  o.tiles=makeTiles(r,'GAG',1050);
-  o.chip=el('div',r,'sticker','left:690px;top:1000px;transform:rotate(6deg)','HBB gene');
-  o.note=el('div',r,'ctr hand','top:1232px;font-size:48px;color:#7A6F62','1 letter out of ~3 billion');
+  o.tiles=makeTiles(r,'GAG',1020);
+  o.chip=el('div',r,'sticker','left:700px;top:965px;transform:rotate(6deg)','HBB gene');
+  o.note=el('div',r,'abs hand','left:28px;top:860px;width:250px;font-size:50px;line-height:1;color:#7A6F62;transform:rotate(-7deg)','1 letter out of<br>~3 billion');
 },(o,t,lt)=>{
   o.scope.update(t,0,p(t,3.55,3.8)*(1-p(t,4.5,4.7)));
   tf(o.scope.box,`scale(${lerp(.9,1,eb(p(t,2.82,3.15)))})`);
@@ -339,7 +340,7 @@ scene(20.117,24.317,(r,o)=>{
   o.track=el('div',r,'abs','left:500px;top:520px;width:480px;height:76px;border:6px solid #1B1B1B;border-radius:40px;background:#FFFDF8;overflow:hidden');
   o.fill=el('div',o.track,'abs','left:0;top:0;height:100%;width:0;background:#6B5BD6');
   o.fl=el('div',r,'abs hand','left:500px;top:610px;width:480px;text-align:center;font-size:48px;color:#6B5BD6','fetal hemoglobin ↑');
-  o.scope=makeScope(r,540,960,250,23,14,[0,2,3,5,6,8,9,11,12,13]);
+  o.scope=makeScope(r,540,960,240,23,18,[0,2,3,5,6,8,9,11,12,13,15,16]);
   o.ok=el('div',r,'abs hand','left:760px;top:1060px;font-size:58px;color:#1F8F5A;transform:rotate(-8deg)','cells stop sickling ✓');
   o.sc=makeScissors(r);
 },(o,t,lt)=>{
@@ -400,7 +401,7 @@ function draw(t){
     s.root.style.display='block';
     const inP=a===0?1:eo(p(t,a,a+.22)),outP=p(t,b-.14,b);
     s.root.style.opacity=inP*(1-outP);
-    const push=loop?1:1+.025*p(t,a,b);
+    const push=loop?1:1+.045*p(t,a,b);
     s.root.style.transform=`translateY(${(1-inP)*60-outP*50}px) scale(${lerp(.95,1,inP)*push})`;
     s.draw(s,t,lt,loop);
   }
