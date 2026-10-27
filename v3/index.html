@@ -1,0 +1,413 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CRISPR Short v3</title>
+<style>
+@font-face{font-family:'Instrument Serif';font-style:italic;src:url(fonts/instrument-serif-italic.woff2) format('woff2')}
+@font-face{font-family:'Instrument Serif';font-style:normal;src:url(fonts/instrument-serif.woff2) format('woff2')}
+@font-face{font-family:'Caveat';font-weight:700;src:url(fonts/caveat-700.woff2) format('woff2')}
+:root{--ink:#1B1B1B;--red:#E03A2F;--green:#1F8F5A;--purple:#6B5BD6;--paper:#F4EFE6}
+*{box-sizing:border-box}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:var(--paper)}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;
+  background:radial-gradient(ellipse 120% 80% at 50% 40%,#F8F4EC 0%,#F1EBDF 60%,#E6DECF 100%)}
+#grain{position:absolute;inset:0;opacity:.35;mix-blend-mode:multiply;pointer-events:none}
+#cam{position:absolute;inset:0;transform-origin:540px 820px}
+.scene{position:absolute;inset:0;display:none;transform-origin:540px 820px}
+.abs{position:absolute}
+.ctr{position:absolute;left:0;width:1080px;text-align:center}
+.sans{font-family:'Inter Display','Inter',sans-serif;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+.serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400}
+.mono{font-family:'JetBrains Mono',monospace;font-weight:700}
+.hand{font-family:'Caveat',cursive;font-weight:700}
+.brand{top:84px;font:500 26px 'JetBrains Mono';color:#8B8478;letter-spacing:.02em}
+.tile{position:absolute;width:150px;height:172px;border:7px solid var(--ink);border-radius:24px;background:#fff;
+  box-shadow:0 9px 0 var(--ink);display:flex;align-items:center;justify-content:center;
+  font:800 104px 'JetBrains Mono';color:var(--ink);transform-origin:50% 50%}
+.tile.bad{background:#FBE1DC;color:var(--red)}
+.tile.good{background:#DDF2E6;color:var(--green)}
+.sticker{position:absolute;padding:10px 22px;border:5px solid var(--ink);border-radius:16px;background:#FFF8E1;
+  font:700 36px 'JetBrains Mono';color:var(--ink);box-shadow:0 6px 0 var(--ink);white-space:nowrap}
+.mark{background-image:linear-gradient(transparent 58%,#FFCFC4 58%,#FFCFC4 92%,transparent 92%);
+  background-repeat:no-repeat;background-size:0% 100%}
+#cap{position:absolute;left:60px;width:960px;top:1296px;text-align:center;
+  font:800 68px/1.12 'Inter Display','Inter',sans-serif;color:var(--ink);letter-spacing:-.01em}
+#cap span{display:inline-block;margin:0 9px;transform-origin:50% 80%}
+.card{position:absolute;border:6px solid var(--ink);border-radius:30px;background:#FFFDF8;box-shadow:0 10px 0 var(--ink)}
+.code{position:absolute;left:90px;width:900px;top:560px;height:520px;border-radius:30px;background:#1D1B24;
+  box-shadow:0 12px 0 #0E0D12;padding:96px 46px 0;font:600 46px/1.65 'JetBrains Mono';color:#E9E6F2}
+.code .dots{position:absolute;top:30px;left:36px}
+.code .dots i{display:inline-block;width:22px;height:22px;border-radius:50%;margin-right:12px}
+.ln{position:relative;white-space:pre}
+.c-com{color:#7E7A8E}.c-kw{color:#C792EA}.c-fn{color:#82AAFF}.c-ok{color:#7FE0A8}
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <filter id="rough" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="1"/>
+        <feDisplacementMap in="SourceGraphic" scale="5"/>
+      </filter>
+      <radialGradient id="rbc" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#F49A8E"/><stop offset="55%" stop-color="#E5574C"/><stop offset="100%" stop-color="#C93C33"/>
+      </radialGradient>
+      <linearGradient id="sick" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#D2463C"/><stop offset="100%" stop-color="#A92F28"/>
+      </linearGradient>
+      <radialGradient id="scopebg" cx="50%" cy="45%" r="55%">
+        <stop offset="0%" stop-color="#FBEDE6"/><stop offset="80%" stop-color="#F3D9CF"/><stop offset="100%" stop-color="#D9B5A8"/>
+      </radialGradient>
+    </defs>
+  </svg>
+  <svg id="grain" width="1080" height="1920"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="4"/><feColorMatrix values="0 0 0 0 .45  0 0 0 0 .4  0 0 0 0 .33  0 0 0 .55 0"/></filter><rect width="1080" height="1920" filter="url(#n)"/></svg>
+  <div id="cam"></div>
+  <div class="ctr brand" id="brand">{ } source_code_of_life</div>
+  <div id="cap"></div>
+</div>
+<script>
+// ---------- yardımcılar ----------
+const SVGNS='http://www.w3.org/2000/svg';
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const p=(t,a,b)=>clamp((t-a)/(b-a));
+const lerp=(a,b,x)=>a+(b-a)*x;
+const eo=x=>1-Math.pow(1-x,3);
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eb=x=>{const c1=1.9,c3=c1+1;return x<=0?0:1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+function el(tag,parent,cls,css,html){const e=document.createElement(tag);if(cls)e.className=cls;if(css)e.style.cssText=css;if(html!=null)e.innerHTML=html;parent.appendChild(e);return e}
+function sv(tag,parent,attrs){const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent.appendChild(e);return e}
+function svgBox(parent,x,y,w,h,vb){const s=sv('svg',parent,{width:w,height:h,viewBox:vb||`0 0 ${w} ${h}`});s.style.cssText=`position:absolute;left:${x}px;top:${y}px;overflow:visible`;return s}
+function rng(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+const tf=(e,s)=>{e.style.transform=s};
+const op=(e,v)=>{e.style.opacity=v};
+function pathLen(d){const t=sv('path',document.querySelector('defs'),{d});const l=t.getTotalLength();t.remove();return l}
+function draw_on(path,len,x){path.style.strokeDasharray=len;path.style.strokeDashoffset=len*(1-x);path.style.opacity=x>0?1:0}
+
+const END=28.5;
+const cam=document.getElementById('cam');
+
+// ---------- altyazı zamanlaması (yeni zaman çizgisi) ----------
+const CHUNKS=[
+ [0.00,"The first CRISPR"],[0.917,"medicine doesn't"],[1.85,"fix the typo."],
+ [2.817,"Sickle cell"],[3.55,"disease comes from"],[4.617,"one wrong letter"],[5.617,"in one gene."],
+ [6.55,"You'd think the"],[7.283,"treatment edits"],[7.983,"that letter back."],[8.95,"It doesn't."],
+ [9.917,"Casgevy breaks a"],[10.983,"different switch"],[12.517,"called BCL11A"],
+ [13.65,"in the patient's"],[14.717,"own blood stem"],[16.05,"cells."],
+ [16.85,"That switch shuts"],[17.883,"off fetal"],[18.483,"hemoglobin after"],[19.45,"birth."],
+ [20.117,"Break the switch"],[21.083,"and the baby"],[21.817,"version turns back"],[22.85,"on and takes"],[23.583,"over the job."],
+ [24.317,"Sometimes the fix"],[25.25,"isn't fixing the"],[26.117,"bug."],
+ [26.65,"It's turning on"],[27.417,"the backup."]];
+const SPEECH_END=27.97;
+const ACCENT=new Set(['CRISPR',"doesn't",'typo.','wrong','letter','one','gene.','letter','back.','different','switch','BCL11A','own','fetal','hemoglobin','birth.','baby','bug.','backup.','fix']);
+const capEl=document.getElementById('cap');
+const capWords=CHUNKS.map((c,i)=>{
+  const next=i+1<CHUNKS.length?CHUNKS[i+1][0]:SPEECH_END;
+  const ws=c[1].split(' ');const tot=ws.reduce((a,w)=>a+w.length+2,0);
+  let acc=c[0];const span=(next-c[0])*0.86;
+  return ws.map(w=>{const s=acc;acc+=span*(w.length+2)/tot;return{w,s}})
+});
+let capIdx=-1,capSpans=[];
+function drawCaptions(t,show){
+  if(!show||t>=SPEECH_END+0.1){capEl.style.opacity=0;return}
+  let i=-1;for(let k=0;k<CHUNKS.length;k++)if(CHUNKS[k][0]<=t)i=k;
+  if(i<0){capEl.style.opacity=0;return}
+  if(i!==capIdx){capEl.innerHTML='';capSpans=capWords[i].map(o=>el('span',capEl,'','',o.w));capIdx=i}
+  capEl.style.opacity=1;
+  const k=eb(p(t,CHUNKS[i][0],CHUNKS[i][0]+0.16));
+  tf(capEl,`translateY(${(1-k)*18}px) scale(${lerp(.9,1,k)})`);
+  capWords[i].forEach((o,j)=>{const s=capSpans[j];const on=t>=o.s;const a=eb(p(t,o.s,o.s+.14));
+    const nxt=j+1<capWords[i].length?capWords[i][j+1].s:9e9;const cur=on&&t<nxt;
+    s.style.color=cur?'#E03A2F':(ACCENT.has(o.w)&&on?'#E03A2F':'#1B1B1B');
+    s.style.opacity=on?1:.28;tf(s,`scale(${cur?lerp(1,1.07,a):1})`)});
+}
+
+// ---------- ortak çizimler ----------
+function makeTiles(parent,letters,y,cls){
+  const gap=26,w=150,total=letters.length*w+(letters.length-1)*gap,x0=(1080-total)/2;
+  return letters.split('').map((L,i)=>{const t=el('div',parent,'tile '+(cls?cls[i]||'':''),`left:${x0+i*(w+gap)}px;top:${y}px`,L);t.dataset.x=x0+i*(w+gap);return t})
+}
+function cellRound(g,s){sv('circle',g,{r:s*.86,fill:'url(#rbc)',stroke:'#A9322A','stroke-width':3});sv('circle',g,{r:s*.38,fill:'#F7A79C',opacity:.75})}
+function cellSickle(g,s){sv('path',g,{d:`M${-s*1.15} ${s*.25} Q0 ${-s*1.75} ${s*1.15} ${s*.25} Q0 ${-s*.45} ${-s*1.15} ${s*.25}Z`,fill:'url(#sick)',stroke:'#8E241E','stroke-width':3,'stroke-linejoin':'round'})}
+function makeScope(parent,cx,cy,r,seed,n,sickleIdx){
+  const box=svgBox(parent,cx-r-30,cy-r-30,2*r+60,2*r+60,`${-r-30} ${-r-30} ${2*r+60} ${2*r+60}`);
+  const id='clip'+seed;const cp=sv('clipPath',box,{id});sv('circle',cp,{r});
+  const inner=sv('g',box,{'clip-path':`url(#${id})`});
+  sv('circle',inner,{r,fill:'url(#scopebg)'});
+  const R=rng(seed),cells=[];
+  for(let i=0;i<n;i++){
+    const a=R()*Math.PI*2,d=Math.sqrt(R())*r*.92,x=Math.cos(a)*d,y=Math.sin(a)*d,s=34+R()*14;
+    const g=sv('g',inner,{});const gr=sv('g',g,{});cellRound(gr,s);const gs=sv('g',g,{});cellSickle(gs,s);
+    cells.push({g,gr,gs,x,y,s,rot:R()*360,ph:R()*6.28,sick:sickleIdx.includes(i),delay:R()})
+  }
+  sv('circle',box,{r,fill:'none',stroke:'#1B1B1B','stroke-width':16});
+  sv('circle',box,{r:r+16,fill:'none',stroke:'#1B1B1B','stroke-width':3,opacity:.35});
+  return{box,cells,update(t,heal=0,pulse=0){cells.forEach(c=>{
+    const dx=Math.sin(t*.7+c.ph)*9,dy=Math.cos(t*.55+c.ph)*9,rot=c.rot+Math.sin(t*.4+c.ph)*12;
+    let m=c.sick?1:0;if(c.sick)m=1-eio(p(heal,c.delay*.55,c.delay*.55+.45));
+    const pl=c.sick?1+pulse*.12*Math.max(0,Math.sin(t*12)):1;
+    c.g.setAttribute('transform',`translate(${c.x+dx} ${c.y+dy}) rotate(${rot}) scale(${pl})`);
+    const q=clamp((m-.35)/.3);c.gs.setAttribute('opacity',q);c.gr.setAttribute('opacity',1-q);
+    c.gs.setAttribute('transform',`scale(${lerp(.8,1,m)})`);c.gr.setAttribute('transform',`scale(${lerp(.75,1,1-m)})`)})}}
+}
+function makeSwitch(parent,cx,cy,sc){
+  const box=svgBox(parent,cx-260*sc,cy-160*sc,520*sc,320*sc,'-260 -160 520 320');
+  const halves=[];
+  [['L','-260,-160 8,-160 -14,-60 22,-10 -10,50 12,160 -260,160'],['R','8,-160 260,-160 260,160 12,160 -10,50 22,-10 -14,-60']].forEach(([k,pts])=>{
+    const id='sw'+k+Math.round(cx)+Math.round(cy);const cp=sv('clipPath',box,{id});sv('polygon',cp,{points:pts});
+    const g=sv('g',box,{});const gi=sv('g',g,{'clip-path':`url(#${id})`});
+    const track=sv('rect',gi,{x:-200,y:-100,width:400,height:200,rx:100,fill:'#BFE6D2',stroke:'#1B1B1B','stroke-width':10});
+    const knob=sv('circle',gi,{cx:100,cy:0,r:78,fill:'#fff',stroke:'#1B1B1B','stroke-width':10});
+    halves.push({g,track,knob})});
+  const crack=sv('polyline',box,{points:'8,-120 -14,-60 22,-10 -10,50 12,120',fill:'none',stroke:'#E03A2F','stroke-width':9,'stroke-linejoin':'round',opacity:0});
+  const slash=sv('path',box,{d:'M-230 -120 L230 120',stroke:'#E03A2F','stroke-width':16,'stroke-linecap':'round',fill:'none',filter:'url(#rough)'});
+  const sl=pathLen('M-230 -120 L230 120');
+  return{box,set(on,brk,sl_x){halves.forEach(h=>{h.knob.setAttribute('cx',lerp(-100,100,on));h.track.setAttribute('fill',on>.5?'#BFE6D2':'#E9E4DA')});
+    halves[0].g.setAttribute('transform',`translate(${-brk*34} ${brk*10}) rotate(${-brk*7})`);
+    halves[1].g.setAttribute('transform',`translate(${brk*34} ${-brk*6}) rotate(${brk*6})`);
+    crack.setAttribute('opacity',brk>0&&brk<.35?1:0);draw_on(slash,sl,sl_x||0)}}
+}
+function makeScissors(parent){
+  const box=svgBox(parent,0,0,340,200,'-200 -100 340 200');box.style.left='0px';
+  const arms=[0,1].map(i=>{const g=sv('g',box,{});
+    sv('polygon',g,{points:'40,-9 -175,0 40,9',fill:'#D9E0E7',stroke:'#1B1B1B','stroke-width':5,'stroke-linejoin':'round'});
+    sv('line',g,{x1:30,y1:0,x2:58,y2:0,stroke:'#1B1B1B','stroke-width':12});
+    sv('circle',g,{cx:88,cy:0,r:30,fill:'none',stroke:'#E03A2F','stroke-width':14});return g});
+  sv('circle',box,{r:9,fill:'#1B1B1B'});
+  return{box,set(x,y,open,rot=0,s=1){box.style.transform=`translate(${x-200}px,${y-100}px) rotate(${rot}deg) scale(${s})`;box.style.transformOrigin='200px 100px';
+    arms[0].setAttribute('transform',`rotate(${-open*22})`);arms[1].setAttribute('transform',`rotate(${open*22})`)}}
+}
+function handPath(parent,x,y,w,h,d,color,sw){const s=svgBox(parent,x,y,w,h);const pth=sv('path',s,{d,fill:'none',stroke:color,'stroke-width':sw,'stroke-linecap':'round','stroke-linejoin':'round',filter:'url(#rough)'});return{s,pth,len:pathLen(d)}}
+function person(parent,x,y,sc,color){const s=svgBox(parent,x,y,160*sc,220*sc,'-80 -110 160 220');
+  const g=sv('g',s,{fill:'none',stroke:color||'#1B1B1B','stroke-width':8,'stroke-linecap':'round',filter:'url(#rough)'});
+  sv('circle',g,{cx:0,cy:-62,r:34});sv('path',g,{d:'M-62 100 Q-62 -10 0 -10 Q62 -10 62 100'});
+  sv('circle',g,{cx:-12,cy:-66,r:2.5,fill:'#1B1B1B'});sv('circle',g,{cx:12,cy:-66,r:2.5,fill:'#1B1B1B'});sv('path',g,{d:'M-10 -50 Q0 -42 10 -50'});return s}
+function baby(parent,x,y,sc){const s=svgBox(parent,x,y,140*sc,140*sc,'-70 -70 140 140');
+  const g=sv('g',s,{stroke:'#1B1B1B','stroke-width':6,'stroke-linecap':'round',filter:'url(#rough)'});
+  sv('ellipse',g,{cx:0,cy:24,rx:46,ry:38,fill:'#E9E2FB'});sv('circle',g,{cx:0,cy:-28,r:30,fill:'#FFE9DA'});
+  sv('circle',g,{cx:-10,cy:-30,r:2.5,fill:'#1B1B1B'});sv('circle',g,{cx:10,cy:-30,r:2.5,fill:'#1B1B1B'});sv('path',g,{d:'M-7 -18 Q0 -13 7 -18',fill:'none'});
+  sv('path',g,{d:'M-4 -58 Q4 -66 2 -56',fill:'none'});return s}
+
+// ---------- sahneler ----------
+const scenes=[];
+function scene(a,b,build,draw,opts={}){const root=el('div',cam,'scene');const o={a,b,root,draw,...opts};build(root,o);scenes.push(o);return o}
+
+// 1) HOOK
+const hook=scene(0,2.817,(r,o)=>{
+  o.l1=el('div',r,'ctr sans','top:236px;font-size:84px;line-height:1.05','<span class="mark">The</span> <span class="mark">first</span> <span class="mark" style="color:#E03A2F">CRISPR</span><br><span class="mark">medicine</span>');
+  o.l2=el('div',r,'ctr sans','top:430px;font-size:182px;font-weight:900;color:#E03A2F;letter-spacing:-.03em;line-height:1','doesn\'t fix');
+  o.l3=el('div',r,'ctr serif','top:604px;font-size:178px;line-height:1','<span class="mark">the typo.</span>');
+  o.tiles=makeTiles(r,'GTG',880,['','bad','']);
+  const T=o.tiles[1];const tx=+T.dataset.x+75,ty=966;
+  const d=`M ${tx+8} ${ty-122} C ${tx+120} ${ty-118} ${tx+132} ${ty+110} ${tx-6} ${ty+118} C ${tx-128} ${ty+122} ${tx-130} ${ty-100} ${tx-10} ${ty-120} C ${tx+40} ${ty-126} ${tx+70} ${ty-110} ${tx+84} ${ty-96}`;
+  o.circ=handPath(r,0,0,1080,1300,d,'#E03A2F',11);
+  o.note=el('div',r,'abs hand','left:560px;top:1112px;font-size:62px;color:#E03A2F;transform-origin:0 50%','one wrong letter');
+  o.arrow=handPath(r,0,0,1080,1300,`M 600 1118 Q 560 1080 ${tx+70} ${ty+70}`,'#E03A2F',7);
+  o.arrowHead=handPath(r,0,0,1080,1300,`M ${tx+92} ${ty+58} L ${tx+70} ${ty+70} L ${tx+80} ${ty+94}`,'#E03A2F',7);
+  o.marks=[...r.querySelectorAll('.mark')];
+},(o,t,lt,loop)=>{
+  const W=[0.02,0.25,0.5,0.917,1.85];// The first CRISPR medicine | the typo.
+  o.marks.forEach((m,i)=>{const x=loop?0:eo(p(lt,W[i],W[i]+.28));m.style.backgroundSize=`${x*100}% 100%`});
+  const pun=loop?0:Math.sin(Math.PI*p(lt,1.33,1.6));tf(o.l2,`scale(${1+pun*.08}) rotate(${-pun*1.5}deg)`);
+  draw_on(o.circ.pth,o.circ.len,loop?0:eio(p(lt,1.85,2.25)));
+  const n=loop?0:eb(p(lt,2.2,2.45));op(o.note,n);tf(o.note,`rotate(-6deg) scale(${lerp(.6,1,n)})`);
+  draw_on(o.arrow.pth,o.arrow.len,loop?0:eo(p(lt,2.3,2.5)));draw_on(o.arrowHead.pth,o.arrowHead.len,loop?0:eo(p(lt,2.48,2.58)));
+  o.tiles.forEach((tl,i)=>tf(tl,`translateY(${Math.sin(lt*3+i*1.3)*5}px)`));
+},{hook:true});
+
+// 2) SICKLE
+scene(2.817,6.55,(r,o)=>{
+  o.h1=el('div',r,'ctr serif','top:190px;font-size:128px;color:#E03A2F;line-height:1','sickle cell disease');
+  o.h2=el('div',r,'ctr sans','top:330px;font-size:62px','comes from <span style="color:#E03A2F">one wrong letter</span>');
+  o.scope=makeScope(r,540,720,270,11,16,[1,4,7,9,12,14]);
+  o.scopeLbl=el('div',r,'abs hand','left:720px;top:430px;font-size:48px;color:#7A6F62;transform:rotate(8deg)','blood, magnified');
+  o.tiles=makeTiles(r,'GAG',1050);
+  o.chip=el('div',r,'sticker','left:690px;top:1000px;transform:rotate(6deg)','HBB gene');
+  o.note=el('div',r,'ctr hand','top:1232px;font-size:48px;color:#7A6F62','1 letter out of ~3 billion');
+},(o,t,lt)=>{
+  o.scope.update(t,0,p(t,3.55,3.8)*(1-p(t,4.5,4.7)));
+  tf(o.scope.box,`scale(${lerp(.9,1,eb(p(t,2.82,3.15)))})`);
+  const h2=eo(p(t,3.55,3.8));op(o.h2,h2);tf(o.h2,`translateY(${(1-h2)*20}px)`);
+  const fl=p(t,4.62,4.92),M=o.tiles[1];
+  if(fl<.5){M.textContent='A';M.className='tile'}else{M.textContent='T';M.className='tile bad'}
+  tf(M,`perspective(700px) rotateX(${fl<.5?fl*180:(fl-1)*180}deg) translateY(${-Math.sin(Math.PI*fl)*40}px)`);
+  const c=eb(p(t,5.62,5.85));op(o.chip,c>0?1:0);tf(o.chip,`rotate(6deg) scale(${c})`);
+  op(o.note,eo(p(t,5.75,6.0)));op(o.scopeLbl,eo(p(t,3.0,3.3)));
+});
+
+// 3) THINK + 4) IT DOESN'T
+scene(6.55,9.917,(r,o)=>{
+  o.h1=el('div',r,'ctr sans','top:250px;font-size:70px','you\'d think it edits');
+  o.h2=el('div',r,'ctr serif','top:340px;font-size:132px;color:#E03A2F;line-height:1','the letter back');
+  o.tiles=makeTiles(r,'GTG',640,['','bad','']);
+  o.newA=el('div',r,'tile good',`left:${o.tiles[1].dataset.x}px;top:640px;opacity:0`,'A');
+  o.sc=makeScissors(r);
+  o.note=el('div',r,'ctr hand','top:880px;font-size:64px;color:#1F8F5A','the obvious fix ✓');
+  o.x1=handPath(r,0,0,1080,1300,'M 250 560 Q 540 740 840 900','#E03A2F',22);
+  o.x2=handPath(r,0,0,1080,1300,'M 830 570 Q 560 720 240 890','#E03A2F',22);
+  o.big=el('div',r,'ctr serif','top:1000px;font-size:200px;color:#E03A2F;line-height:1','it doesn\'t.');
+},(o,t,lt)=>{
+  const T=o.tiles[1],tx=+T.dataset.x;
+  const sIn=eo(p(t,7.28,7.62)),snip=p(t,7.62,7.78),out=eio(p(t,7.85,8.15));
+  o.sc.set(lerp(1240,tx+150,sIn)+out*500,726,1-Math.sin(Math.PI*snip)*1+ (snip>=1?0:0),0,1.1);
+  op(o.sc.box,sIn>0&&out<1?1:0);
+  const fly=eio(p(t,7.78,8.15));tf(T,`translate(${fly*60}px,${-fly*520}px) rotate(${fly*35}deg)`);op(T,1-fly);
+  const dropA=eb(p(t,7.98,8.25));op(o.newA,dropA>0?1:0);tf(o.newA,`translateY(${(1-dropA)*-220}px)`);
+  const n=eo(p(t,8.3,8.55));op(o.note,n*(1-p(t,8.95,9.05)*.6));
+  draw_on(o.x1.pth,o.x1.len,eo(p(t,8.95,9.07)));draw_on(o.x2.pth,o.x2.len,eo(p(t,9.07,9.19)));
+  const dim=p(t,8.95,9.2);[...o.tiles,o.newA].forEach(e=>e.style.filter=`grayscale(${dim})`);
+  const b=eb(p(t,9.0,9.25));op(o.big,b>0?1:0);tf(o.big,`scale(${lerp(1.6,1,b)}) rotate(-3deg)`);
+});
+
+// 5) SWITCH
+scene(9.917,13.65,(r,o)=>{
+  o.h1=el('div',r,'ctr sans','top:250px;font-size:70px','it breaks a');
+  o.h2=el('div',r,'ctr serif','top:340px;font-size:140px;color:#E03A2F;line-height:1','different switch');
+  o.st=el('div',r,'sticker','left:640px;top:170px;transform:rotate(4deg);font-size:32px','Casgevy · exa-cel');
+  o.sw=makeSwitch(r,540,720,1.15);
+  o.lbl=el('div',r,'ctr mono','top:930px;font-size:78px;color:#1B1B1B','');
+  o.note=el('div',r,'ctr hand','top:1060px;font-size:54px;color:#7A6F62','the gene that keeps baby hemoglobin OFF');
+  o.sc=makeScissors(r);
+},(o,t,lt)=>{
+  const st=eb(p(t,10.0,10.25));tf(o.st,`rotate(4deg) scale(${st})`);
+  const pop=Math.sin(Math.PI*p(t,10.98,11.3));
+  const brk=eo(p(t,13.22,13.45));
+  o.sw.set(1,brk,eo(p(t,13.22,13.34)));
+  tf(o.sw.box,`scale(${1+pop*.1})`);
+  const txt='BCL11A',k=Math.floor(p(t,12.52,12.95)*txt.length+.0001);
+  o.lbl.textContent=txt.slice(0,k)+((t>12.45&&t<13.4&&Math.floor(t*4)%2===0)?'▍':'');
+  op(o.note,eo(p(t,11.5,11.8)));
+  const sIn=eo(p(t,12.85,13.12)),snip=p(t,13.12,13.26),out=p(t,13.3,13.6);
+  o.sc.set(lerp(-200,540-60,sIn)-out*700,700,1-Math.sin(Math.PI*snip),180,1.2);op(o.sc.box,sIn>0&&out<1?1:0);
+});
+
+// 6) STEM CELLS (ex vivo)
+scene(13.65,16.85,(r,o)=>{
+  o.h1=el('div',r,'ctr sans','top:250px;font-size:70px','in the patient\'s <span style="color:#E03A2F">own</span>');
+  o.h2=el('div',r,'ctr serif','top:340px;font-size:140px;color:#E03A2F;line-height:1','blood stem cells');
+  o.cards=[0,1,2].map(i=>el('div',r,'card',`left:${48+i*338}px;top:560px;width:306px;height:380px`));
+  person(o.cards[0],73,60,1.0);
+  const ds=svgBox(o.cards[1],23,60,260,260,'-130 -130 260 260');
+  sv('circle',ds,{r:112,fill:'#EAF1F6',stroke:'#1B1B1B','stroke-width':7});sv('circle',ds,{r:96,fill:'none',stroke:'#1B1B1B','stroke-width':2,opacity:.3});
+  const R=rng(5);for(let i=0;i<8;i++){const a=R()*6.28,d=R()*70;sv('circle',ds,{cx:Math.cos(a)*d,cy:Math.sin(a)*d,r:20,fill:'#CDBEF3',stroke:'#4B3FA0','stroke-width':4});sv('circle',ds,{cx:Math.cos(a)*d+4,cy:Math.sin(a)*d-3,r:7,fill:'#4B3FA0'})}
+  o.dsc=makeScissors(o.cards[1]);
+  person(o.cards[2],73,60,1.0,'#1F8F5A');
+  o.chk=el('div',o.cards[2],'abs hand','left:196px;top:30px;font-size:90px;color:#1F8F5A','✓');
+  o.lbls=['1 · take out','2 · edit','3 · put back'].map((s,i)=>el('div',o.cards[i],'abs hand',`left:0;width:294px;text-align:center;top:300px;font-size:52px;color:#1B1B1B`,s));
+  o.arr=[0,1].map(i=>el('div',r,'abs sans',`left:${330+i*338}px;top:700px;font-size:60px;color:#E03A2F`,'→'));
+  o.note=el('div',r,'ctr hand','top:1040px;font-size:62px;color:#1F8F5A','no donor needed');
+},(o,t,lt)=>{
+  const T=[13.7,14.72,16.05];
+  o.cards.forEach((c,i)=>{const k=eb(p(t,T[i],T[i]+.28));op(c,k>0?1:0);tf(c,`translateY(${(1-k)*60}px) scale(${lerp(.85,1,k)}) rotate(${(i-1)*1.5}deg)`)});
+  o.arr.forEach((a,i)=>op(a,eo(p(t,T[i+1]-.1,T[i+1]+.1))));
+  const sn=p(t,15.0,15.6);o.dsc.set(170,190,Math.abs(Math.sin(sn*Math.PI*3)),200,.55);op(o.dsc.box,sn>0&&sn<1?1:0);
+  op(o.chk,eb(p(t,16.3,16.5)));op(o.note,eo(p(t,16.3,16.55)));
+});
+
+// 7) FETAL HEMOGLOBIN
+scene(16.85,20.117,(r,o)=>{
+  o.h1=el('div',r,'ctr serif','top:210px;font-size:150px;color:#6B5BD6;line-height:1','fetal hemoglobin');
+  o.h2=el('div',r,'ctr sans','top:380px;font-size:60px','the <span style="color:#6B5BD6">baby version</span>');
+  const s=svgBox(r,0,560,1080,400);o.svg=s;
+  sv('line',s,{x1:90,y1:200,x2:990,y2:200,stroke:'#1B1B1B','stroke-width':6,'stroke-linecap':'round'});
+  sv('line',s,{x1:540,y1:150,x2:540,y2:250,stroke:'#1B1B1B','stroke-width':6});
+  o.on=sv('rect',s,{x:90,y:110,width:0,height:60,rx:30,fill:'#6B5BD6'});
+  o.off=sv('line',s,{x1:560,y1:140,x2:560,y2:140,stroke:'#B9B1A3','stroke-width':12,'stroke-dasharray':'4 26','stroke-linecap':'round'});
+  o.lOn=el('div',r,'abs sans','left:150px;top:620px;font-size:54px;color:#1F8F5A','ON');
+  o.lOff=el('div',r,'abs sans','left:800px;top:620px;font-size:54px;color:#9A9285','OFF');
+  el('div',r,'abs hand','left:170px;top:790px;font-size:50px;color:#7A6F62','before birth');
+  el('div',r,'abs hand','left:700px;top:790px;font-size:50px;color:#7A6F62','after birth');
+  o.baby=baby(r,470,525,1.0);
+  o.sw=makeSwitch(r,760,1040,.42);
+  o.swl=el('div',r,'abs mono','left:540px;top:1110px;width:440px;text-align:center;font-size:40px','BCL11A');
+},(o,t,lt)=>{
+  const a=eio(p(t,16.95,18.48));o.on.setAttribute('width',a*450);
+  const b=eio(p(t,18.6,19.7));o.off.setAttribute('x2',560+b*420);
+  op(o.lOn,eo(p(t,17.2,17.5)));op(o.lOff,eo(p(t,18.9,19.2)));
+  const bb=eb(p(t,19.45,19.7));op(o.baby,bb>0?1:0);tf(o.baby,`scale(${bb}) translateY(${Math.sin(t*4)*4}px)`);
+  const sw=eb(p(t,17.25,17.5));op(o.sw.box,sw>0?1:0);op(o.swl,sw);o.sw.set(eio(p(t,17.88,18.15)),0,0);
+  tf(o.sw.box,`scale(${sw})`);
+});
+
+// 8) BREAK -> BABY VERSION ON
+scene(20.117,24.317,(r,o)=>{
+  o.h1=el('div',r,'ctr sans','top:230px;font-size:70px','break the switch →');
+  o.h2=el('div',r,'ctr serif','top:320px;font-size:140px;color:#1F8F5A;line-height:1','baby version ON');
+  o.sw=makeSwitch(r,250,560,.5);
+  o.swl=el('div',r,'abs mono','left:110px;top:630px;width:280px;text-align:center;font-size:40px','BCL11A');
+  o.track=el('div',r,'abs','left:500px;top:520px;width:480px;height:76px;border:6px solid #1B1B1B;border-radius:40px;background:#FFFDF8;overflow:hidden');
+  o.fill=el('div',o.track,'abs','left:0;top:0;height:100%;width:0;background:#6B5BD6');
+  o.fl=el('div',r,'abs hand','left:500px;top:610px;width:480px;text-align:center;font-size:48px;color:#6B5BD6','fetal hemoglobin ↑');
+  o.scope=makeScope(r,540,960,250,23,14,[0,2,3,5,6,8,9,11,12,13]);
+  o.ok=el('div',r,'abs hand','left:760px;top:1060px;font-size:58px;color:#1F8F5A;transform:rotate(-8deg)','cells stop sickling ✓');
+  o.sc=makeScissors(r);
+},(o,t,lt)=>{
+  const snip=p(t,20.12,20.3);o.sc.set(250,560,1-Math.sin(Math.PI*snip),180,.7);op(o.sc.box,t<20.42?1:0);
+  o.sw.set(1,eo(p(t,20.22,20.45)),eo(p(t,20.22,20.32)));
+  const h2=eo(p(t,21.08,21.35));op(o.h2,h2);tf(o.h2,`translateY(${(1-h2)*24}px)`);
+  o.fill.style.width=`${lerp(6,82,eio(p(t,21.82,23.2)))}%`;
+  o.scope.update(t,p(t,21.82,23.5));
+  const k=eb(p(t,23.58,23.85));op(o.ok,k>0?1:0);tf(o.ok,`rotate(-8deg) scale(${k})`);
+});
+
+// 9+10) CODE: fix vs backup
+scene(24.317,28.0,(r,o)=>{
+  o.h1=el('div',r,'ctr sans','top:240px;font-size:76px','sometimes the fix');
+  o.h2a=el('div',r,'ctr serif','top:340px;font-size:132px;color:#E03A2F;line-height:1','isn\'t fixing the bug.');
+  o.h2b=el('div',r,'ctr serif','top:340px;font-size:150px;color:#1F8F5A;line-height:1','it\'s the backup.');
+  o.code=el('div',r,'code','');
+  o.code.innerHTML='<div class="dots"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>';
+  o.L=[
+    el('div',o.code,'ln','','<span class="c-com">// sickle cell disease</span>'),
+    el('div',o.code,'ln','','<span class="c-kw">if</span> (bug) {'),
+    el('div',o.code,'ln','','  <span class="c-fn">fix</span>(bug);'),
+    el('div',o.code,'ln','',''),
+    el('div',o.code,'ln','','}')];
+  o.strike=handPath(r,0,0,1080,1300,'M 180 840 L 470 832','#E03A2F',10);
+  o.nope=el('div',r,'abs hand','left:560px;top:800px;font-size:62px;color:#FF7A6E;transform:rotate(-6deg)','← nope');
+  o.glow=el('div',o.code,'abs','left:20px;right:20px;top:322px;height:76px;border-radius:14px;background:rgba(127,224,168,.16);opacity:0');
+  o.bug=svgBox(r,0,0,90,60,'-45 -30 90 60');
+  const g=sv('g',o.bug,{stroke:'#1B1B1B','stroke-width':4,'stroke-linecap':'round',filter:'url(#rough)'});
+  for(const s of[-1,1])for(const k of[-14,0,14])sv('line',g,{x1:k,y1:s*10,x2:k+(k/2),y2:s*26});
+  sv('ellipse',g,{rx:24,ry:15,fill:'#E03A2F'});sv('circle',g,{cx:26,cy:0,r:9,fill:'#1B1B1B'});sv('line',g,{x1:0,y1:-15,x2:0,y2:15,stroke:'#1B1B1B'});
+  o.note=el('div',r,'ctr hand','top:1130px;font-size:58px;color:#6B5BD6','backup = fetal hemoglobin');
+},(o,t,lt)=>{
+  const s1=p(t,25.25,25.55);draw_on(o.strike.pth,o.strike.len,eo(s1));
+  op(o.nope,eo(p(t,25.5,25.7)));op(o.L[2],1-s1*.45);
+  const sw=p(t,27.35,27.6);op(o.h2a,1-sw);op(o.h2b,sw);tf(o.h2b,`scale(${lerp(.9,1,eb(sw))})`);
+  const txt='  backup.enable();',k=Math.floor(p(t,26.68,27.35)*txt.length+.0001);
+  const typed=txt.slice(0,k).replace('backup','<span class="c-ok">backup</span>').replace('.enable','.<span class="c-fn">enable</span>');
+  const cur=(t>26.6&&t<27.9&&Math.floor(t*4)%2===0)?'<span style="color:#7FE0A8">▍</span>':'';
+  o.L[3].innerHTML=typed+cur;
+  op(o.glow,eo(p(t,27.35,27.6))*(0.75+0.25*Math.sin(t*9)));
+  const bx=lerp(1120,700,eo(p(t,26.05,26.45))),by=560+Math.sin(t*14)*3;
+  o.bug.style.transform=`translate(${bx}px,${by-30}px) rotate(180deg)`;op(o.bug,t>26.0?1:0);
+  op(o.note,eo(p(t,27.5,27.75)));
+});
+
+// ---------- kare çizimi ----------
+const turb=document.getElementById('turb');
+function shake(t){let s=0;for(const[a,amp]of[[8.95,14],[13.22,10],[20.12,10]]){const k=p(t,a,a+.35);if(k>0&&k<1)s+=amp*(1-k)}return s}
+function draw(t){
+  turb.setAttribute('seed',1+Math.floor(t*8)%4);
+  const sk=shake(t),ph=2*Math.PI*t/END;
+  cam.style.transform=`translate(${Math.sin(ph*3)*4+Math.sin(t*61)*sk}px,${40+Math.cos(ph*2)*4+Math.cos(t*53)*sk}px) rotate(${Math.sin(ph*2)*.25}deg)`;
+  for(const s of scenes){
+    let vis=t>=s.a&&t<s.b,lt=t-s.a,loop=false,a=s.a,b=s.b;
+    if(s.hook&&t>=28.0){vis=true;loop=true;lt=0;a=28.0;b=END+1}
+    if(!vis){s.root.style.display='none';continue}
+    s.root.style.display='block';
+    const inP=a===0?1:eo(p(t,a,a+.22)),outP=p(t,b-.14,b);
+    s.root.style.opacity=inP*(1-outP);
+    const push=loop?1:1+.025*p(t,a,b);
+    s.root.style.transform=`translateY(${(1-inP)*60-outP*50}px) scale(${lerp(.95,1,inP)*push})`;
+    s.draw(s,t,lt,loop);
+  }
+  drawCaptions(t,!(t<2.817||t>=28.0||(t>=8.95&&t<9.917)));
+}
+window.draw=draw;
+window.READY=document.fonts.ready.then(()=>{draw(0);return true});
+</script>
+</body>
+</html>
