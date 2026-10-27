@@ -240,12 +240,12 @@ scene(2.817,6.55,(r,o)=>{
   o.hl=handPath(r,0,0,1080,1300,'M 600 640 C 660 650 668 760 560 770 C 450 778 420 660 500 632 C 540 620 590 626 612 646','#E03A2F',9);
   o.scopeLbl=el('div',r,'abs hand','left:745px;top:420px;font-size:50px;line-height:1;color:#E03A2F;transform:rotate(8deg)','a real sickled<br>blood cell');
   o.lblArrow=handPath(r,0,0,1080,1300,'M 800 535 Q 760 600 640 640','#E03A2F',6);
-  o.credit=el('div',r,'credit','left:0;width:1080px;text-align:center;top:966px','photo: Ed Uthman · CC BY 2.0');
+  o.credit=el('div',r,'credit','left:0;width:1080px;text-align:center;top:966px','photo: Prof. Osaro Erhabor · CC0');
   o.tiles=makeTiles(r,'GAG',1020);
   o.chip=el('div',r,'sticker','left:700px;top:965px;transform:rotate(6deg)','HBB gene');
   o.note=el('div',r,'abs hand','left:28px;top:860px;width:250px;font-size:50px;line-height:1;color:#7A6F62;transform:rotate(-7deg)','1 letter out of<br>~3 billion');
 },(o,t,lt)=>{
-  o.ph.set(636,427,lerp(.62,.95,eio(p(t,2.82,6.4))));
+  o.ph.set(584,580,lerp(.62,.95,eio(p(t,2.82,6.4))));
   tf(o.ph.box,`scale(${lerp(.88,1,eb(p(t,2.82,3.15)))}) rotate(${lerp(-4,0,eo(p(t,2.82,3.3)))}deg)`);
   draw_on(o.hl.pth,o.hl.len,eio(p(t,3.6,3.95)));draw_on(o.lblArrow.pth,o.lblArrow.len,eo(p(t,3.9,4.1)));
   op(o.credit,eo(p(t,3.0,3.3))*.9);
