@@ -135,7 +135,7 @@ SFX = [
 ]
 
 
-MUSIC_START = 0.0            # müzik dosyasında başlangıç noktası (sn); müzik isteğe bağlıdır
+MUSIC_START = 218.0          # "Lightless Dawn" 3:38 - en dolgun, dengeli bölüm
 MUSIC_LUFS = -27.0           # konuşma yokken müzik seviyesi
 DUCK_DB = -7.0               # konuşma sırasında müzik ne kadar kısılsın
 
